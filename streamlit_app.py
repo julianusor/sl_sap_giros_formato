@@ -3,88 +3,88 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 
-st.title("PDF Last Page to Image Converter")
+st.title("Convertidor de Última Página de PDF a Imagen")
 
-def convert_last_page_to_image(pdf_bytes):
-    # Open PDF from bytes
-    pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+def convertir_ultima_pagina_a_imagen(pdf_bytes):
+    # Abrir PDF desde bytes
+    pdf_documento = fitz.open(stream=pdf_bytes, filetype="pdf")
     
-    # Get the last page
-    last_page = pdf_document[-1]
+    # Obtener la última página
+    ultima_pagina = pdf_documento[-1]
     
-    # Convert to image with high resolution
-    pix = last_page.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
+    # Convertir a imagen con alta resolución
+    pix = ultima_pagina.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
     
-    # Convert to PIL Image
-    img_data = pix.tobytes("png")
-    image = Image.open(io.BytesIO(img_data))
+    # Convertir a imagen PIL
+    img_datos = pix.tobytes("png")
+    imagen = Image.open(io.BytesIO(img_datos))
     
-    pdf_document.close()
-    return image
+    pdf_documento.close()
+    return imagen
 
-def process_pdf(uploaded_file):
-    # Read the uploaded PDF
-    pdf_bytes = uploaded_file.getvalue()
-    pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
-    total_pages = len(pdf_document)
+def procesar_pdf(archivo_subido):
+    # Leer el PDF subido
+    pdf_bytes = archivo_subido.getvalue()
+    pdf_documento = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_paginas = len(pdf_documento)
     
-    if total_pages < 1:
-        st.error("The uploaded PDF is empty!")
+    if total_paginas < 1:
+        st.error("¡El PDF subido está vacío!")
         return None
     
-    # Create a new PDF
-    output_pdf = fitz.open()
+    # Crear un nuevo PDF
+    pdf_salida = fitz.open()
     
-    # Copy all pages except the last one directly
-    for page_num in range(total_pages - 1):
-        output_pdf.insert_pdf(pdf_document, from_page=page_num, to_page=page_num)
+    # Copiar todas las páginas excepto la última
+    for numero_pagina in range(total_paginas - 1):
+        pdf_salida.insert_pdf(pdf_documento, from_page=numero_pagina, to_page=numero_pagina)
     
-    # Convert last page to image and back to PDF
-    last_page_image = convert_last_page_to_image(pdf_bytes)
+    # Convertir la última página a imagen y luego de vuelta a PDF
+    imagen_ultima_pagina = convertir_ultima_pagina_a_imagen(pdf_bytes)
     
-    # Convert PIL Image to bytes
+    # Convertir imagen PIL a bytes
     img_byte_arr = io.BytesIO()
-    last_page_image.save(img_byte_arr, format='PNG', resolution=300)
+    imagen_ultima_pagina.save(img_byte_arr, format='PNG', resolution=300)
     img_byte_arr.seek(0)
     
-    # Create new page with same dimensions as the last page
-    last_page = pdf_document[-1]
-    rect = last_page.rect
-    new_page = output_pdf.new_page(width=rect.width, height=rect.height)
+    # Crear una nueva página con las mismas dimensiones que la última página
+    ultima_pagina = pdf_documento[-1]
+    rect = ultima_pagina.rect
+    nueva_pagina = pdf_salida.new_page(width=rect.width, height=rect.height)
     
-    # Insert image into the new page
-    new_page.insert_image(rect, stream=img_byte_arr.getvalue())
+    # Insertar imagen en la nueva página
+    nueva_pagina.insert_image(rect, stream=img_byte_arr.getvalue())
     
-    # Save the final PDF to bytes
-    output_bytes = io.BytesIO()
-    output_pdf.save(output_bytes)
-    output_bytes.seek(0)
+    # Guardar el PDF final en bytes
+    salida_bytes = io.BytesIO()
+    pdf_salida.save(salida_bytes)
+    salida_bytes.seek(0)
     
-    pdf_document.close()
-    output_pdf.close()
+    pdf_documento.close()
+    pdf_salida.close()
     
-    return output_bytes
+    return salida_bytes
 
-# File uploader
-uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+# Cargador de archivos
+archivo_subido = st.file_uploader("Elige un archivo PDF", type="pdf")
 
-if uploaded_file is not None:
+if archivo_subido is not None:
     try:
-        # Process the PDF
-        output_pdf = process_pdf(uploaded_file)
+        # Procesar el PDF
+        pdf_salida = procesar_pdf(archivo_subido)
         
-        if output_pdf:
-            # Create download button
+        if pdf_salida:
+            # Crear botón de descarga
             st.download_button(
-                label="Download Processed PDF",
-                data=output_pdf,
-                file_name="processed.pdf",
+                label="Descargar PDF Procesado",
+                data=pdf_salida,
+                file_name="procesado.pdf",
                 mime="application/pdf"
             )
             
-            # Preview the last page image
-            last_page_image = convert_last_page_to_image(uploaded_file.getvalue())
-            st.image(last_page_image, caption="Preview of Last Page", use_column_width=True)
+            # Vista previa de la última página como imagen
+            imagen_ultima_pagina = convertir_ultima_pagina_a_imagen(archivo_subido.getvalue())
+            st.image(imagen_ultima_pagina, caption="Vista previa de la última página", use_column_width=True)
             
     except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
+        st.error(f"Ocurrió un error: {str(e)}")
