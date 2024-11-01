@@ -3,17 +3,17 @@ import fitz  # PyMuPDF
 from PIL import Image
 import io
 
-st.title("Convertidor de Última Página de PDF a Imagen")
+st.title("Convertidor de Primera y Última Página de PDF a Imágenes")
 
-def convertir_ultima_pagina_a_imagen(pdf_bytes):
+def convertir_pagina_a_imagen(pdf_bytes, numero_pagina):
     # Abrir PDF desde bytes
     pdf_documento = fitz.open(stream=pdf_bytes, filetype="pdf")
     
-    # Obtener la última página
-    ultima_pagina = pdf_documento[-1]
+    # Obtener la página especificada
+    pagina = pdf_documento[numero_pagina]
     
     # Convertir a imagen con alta resolución
-    pix = ultima_pagina.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
+    pix = pagina.get_pixmap(matrix=fitz.Matrix(300/72, 300/72))
     
     # Convertir a imagen PIL
     img_datos = pix.tobytes("png")
@@ -35,25 +35,32 @@ def procesar_pdf(archivo_subido):
     # Crear un nuevo PDF
     pdf_salida = fitz.open()
     
-    # Copiar todas las páginas excepto la última
-    for numero_pagina in range(total_paginas - 1):
-        pdf_salida.insert_pdf(pdf_documento, from_page=numero_pagina, to_page=numero_pagina)
+    # Convertir la primera página a imagen y añadir al PDF
+    imagen_primera_pagina = convertir_pagina_a_imagen(pdf_bytes, 0)
     
-    # Convertir la última página a imagen y luego de vuelta a PDF
-    imagen_ultima_pagina = convertir_ultima_pagina_a_imagen(pdf_bytes)
+    # Convertir la última página a imagen y añadir al PDF
+    imagen_ultima_pagina = convertir_pagina_a_imagen(pdf_bytes, total_paginas - 1)
     
-    # Convertir imagen PIL a bytes
-    img_byte_arr = io.BytesIO()
-    imagen_ultima_pagina.save(img_byte_arr, format='PNG', resolution=300)
-    img_byte_arr.seek(0)
+    # Convertir imágenes PIL a bytes
+    img_byte_arr_primera = io.BytesIO()
+    imagen_primera_pagina.save(img_byte_arr_primera, format='PNG', resolution=300)
+    img_byte_arr_primera.seek(0)
     
-    # Crear una nueva página con las mismas dimensiones que la última página
+    img_byte_arr_ultima = io.BytesIO()
+    imagen_ultima_pagina.save(img_byte_arr_ultima, format='PNG', resolution=300)
+    img_byte_arr_ultima.seek(0)
+    
+    # Crear páginas nuevas con las mismas dimensiones
+    primera_pagina = pdf_documento[0]
     ultima_pagina = pdf_documento[-1]
-    rect = ultima_pagina.rect
-    nueva_pagina = pdf_salida.new_page(width=rect.width, height=rect.height)
+    rect_primera = primera_pagina.rect
+    rect_ultima = ultima_pagina.rect
     
-    # Insertar imagen en la nueva página
-    nueva_pagina.insert_image(rect, stream=img_byte_arr.getvalue())
+    nueva_pagina_primera = pdf_salida.new_page(width=rect_primera.width, height=rect_primera.height)
+    nueva_pagina_primera.insert_image(rect_primera, stream=img_byte_arr_primera.getvalue())
+    
+    nueva_pagina_ultima = pdf_salida.new_page(width=rect_ultima.width, height=rect_ultima.height)
+    nueva_pagina_ultima.insert_image(rect_ultima, stream=img_byte_arr_ultima.getvalue())
     
     # Guardar el PDF final en bytes
     salida_bytes = io.BytesIO()
@@ -82,8 +89,11 @@ if archivo_subido is not None:
                 mime="application/pdf"
             )
             
-            # Vista previa de la última página como imagen
-            imagen_ultima_pagina = convertir_ultima_pagina_a_imagen(archivo_subido.getvalue())
+            # Vista previa de la primera y última página como imágenes
+            imagen_primera_pagina = convertir_pagina_a_imagen(archivo_subido.getvalue(), 0)
+            st.image(imagen_primera_pagina, caption="Vista previa de la primera página", use_column_width=True)
+            
+            imagen_ultima_pagina = convertir_pagina_a_imagen(archivo_subido.getvalue(), len(fitz.open(stream=archivo_subido.getvalue(), filetype="pdf")) - 1)
             st.image(imagen_ultima_pagina, caption="Vista previa de la última página", use_column_width=True)
             
     except Exception as e:
